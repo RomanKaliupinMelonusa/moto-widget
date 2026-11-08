@@ -94,12 +94,12 @@ struct ProfileEditorView: View {
             } else {
                 OptionPicker("Design", selection: $draft.design)
                 OptionPicker("Width", selection: $draft.width)
+                Toggle("Small caps", isOn: $draft.usesSmallCaps)
+                Toggle("Monospaced digits", isOn: $draft.usesMonospacedDigits)
             }
             OptionPicker("Weight", selection: $draft.weight)
             SliderRow("Size", value: $draft.fontSize, range: 8...240, step: 1, unit: "pt")
             Toggle("Italic", isOn: $draft.isItalic)
-            Toggle("Small caps", isOn: $draft.usesSmallCaps)
-            Toggle("Monospaced digits", isOn: $draft.usesMonospacedDigits)
         }
     }
 
