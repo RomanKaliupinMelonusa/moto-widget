@@ -169,7 +169,7 @@ nonisolated struct FillSpec: Codable, Hashable, Sendable {
 nonisolated enum LockScreenSlot: Sendable, Equatable {
     case rectangular, circular
     /// One widget of a multi-widget set; the text is already split and sized.
-    case part(fontSize: Double)
+    case part(fontSize: Double, lineLimit: Int)
 }
 
 nonisolated struct StyleProfile: Codable, Hashable, Identifiable, Sendable {

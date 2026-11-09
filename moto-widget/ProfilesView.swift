@@ -24,7 +24,7 @@ struct ProfilesView: View {
                     .labelsHidden()
                 } footer: {
                     Text(kind == .multi
-                        ? "One text is fitted across two Lock Screen widgets. Add Multi Widget: Left and Multi Widget: Right side by side."
+                        ? "Your text is split automatically across two Lock Screen widgets. Add Split Text 1 of 2 and Split Text 2 of 2 side by side."
                         : "Each widget shows the text on its own.")
                 }
 

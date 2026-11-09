@@ -11,7 +11,7 @@ struct StyledTextView: View {
         let size = switch slot {
         case .rectangular: profile.lockRectangularSize
         case .circular: profile.lockCircularSize
-        case .part(let fontSize): fontSize
+        case .part(let fontSize, _): fontSize
         case nil: profile.fontSize
         }
         // Parts are sized by the splitter; the floor only guards against measurement error.
@@ -22,7 +22,11 @@ struct StyledTextView: View {
         } else {
             profile.lockShrinks ? profile.lockMinimumScale : 1
         }
-        let lineLimit = isPart ? 0 : (slot == nil ? profile.lineLimit : profile.lockLineLimit)
+        let lineLimit = switch slot {
+        case .part(_, let limit): limit
+        case nil: profile.lineLimit
+        default: profile.lockLineLimit
+        }
         Text(profile.textCase.apply(to: text))
             .font(profile.font(size: size))
             .tracking(profile.tracking)

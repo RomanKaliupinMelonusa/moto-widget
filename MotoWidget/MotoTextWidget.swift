@@ -142,9 +142,10 @@ struct MotoTextLeftWidget: Widget {
         StaticConfiguration(kind: "MotoTextLeftWidget", provider: PartProvider(part: 0)) { entry in
             TextWidgetView(entry: entry)
         }
-        .configurationDisplayName("Multi Widget: Left")
-        .description("Place next to Multi Widget: Right to show one text across both. Style it in the Styles tab.")
+        .configurationDisplayName("Split Text 1 of 2")
+        .description("Add next to Split Text 2 of 2. Your text is split between them automatically.")
         .supportedFamilies([.accessoryRectangular])
+        .contentMarginsDisabled()
     }
 }
 
@@ -153,9 +154,10 @@ struct MotoTextRightWidget: Widget {
         StaticConfiguration(kind: "MotoTextRightWidget", provider: PartProvider(part: 1)) { entry in
             TextWidgetView(entry: entry)
         }
-        .configurationDisplayName("Multi Widget: Right")
-        .description("Place next to Multi Widget: Left to show one text across both. Style it in the Styles tab.")
+        .configurationDisplayName("Split Text 2 of 2")
+        .description("Add next to Split Text 1 of 2. Your text is split between them automatically.")
         .supportedFamilies([.accessoryRectangular])
+        .contentMarginsDisabled()
     }
 }
 

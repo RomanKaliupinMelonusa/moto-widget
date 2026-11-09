@@ -22,7 +22,7 @@ struct TextsView: View {
                     Text("Widget preview")
                 } footer: {
                     if store.library.layoutMode == .multi {
-                        Text("The text is split across the Multi Widget Left and Right widgets.")
+                        Text("The text is split between Split Text 1 of 2 and Split Text 2 of 2.")
                     }
                 }
 
