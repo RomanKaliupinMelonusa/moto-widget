@@ -106,6 +106,11 @@ nonisolated enum FillKind: String, Codable, OptionEnum {
     case automatic, solid, linear, radial, mesh
 }
 
+/// A single-widget style, or one that fits a text across several widgets.
+nonisolated enum StyleKind: String, Codable, Sendable {
+    case single, multi
+}
+
 // MARK: - Color & fill
 
 nonisolated struct RGBAColor: Codable, Hashable, Sendable {
@@ -161,8 +166,10 @@ nonisolated struct FillSpec: Codable, Hashable, Sendable {
 
 // MARK: - Profile
 
-nonisolated enum LockScreenSlot: Sendable {
+nonisolated enum LockScreenSlot: Sendable, Equatable {
     case rectangular, circular
+    /// One widget of a multi-widget set; the text is already split and sized.
+    case part(fontSize: Double)
 }
 
 nonisolated struct StyleProfile: Codable, Hashable, Identifiable, Sendable {
@@ -218,7 +225,12 @@ nonisolated struct StyleProfile: Codable, Hashable, Identifiable, Sendable {
     var lockShrinksStored: Bool?
     var lockMinimumScaleStored: Double?
     var lockLineLimitStored: Int?
+    var kindStored: StyleKind?
 
+    var kind: StyleKind {
+        get { kindStored ?? .single }
+        set { kindStored = newValue }
+    }
     var lockRectangularSize: Double {
         get { lockRectangularSizeStored ?? 40 }
         set { lockRectangularSizeStored = newValue }
@@ -245,6 +257,15 @@ nonisolated struct StyleProfile: Codable, Hashable, Identifiable, Sendable {
 
     static let builtInDefault = StyleProfile(id: builtInDefaultID, name: "Default")
 
+    static let builtInMultiID = UUID(uuidString: "00000000-0000-0000-0000-000000000002")!
+
+    /// For multi styles, `fontSize` is the largest size tried when fitting the text.
+    static func newMulti(id: UUID = UUID(), name: String = "Multi Widget") -> StyleProfile {
+        StyleProfile(id: id, name: name, fontSize: 44, kindStored: .multi)
+    }
+
+    static let builtInMultiDefault = newMulti(id: builtInMultiID, name: "Multi Widget Default")
+
     func font(size: Double) -> Font {
         var font: Font
         if usesCustomFont, !customFontFamily.isEmpty {
@@ -268,15 +289,46 @@ nonisolated struct SavedText: Codable, Hashable, Identifiable, Sendable {
     var content: String
 }
 
+nonisolated enum LayoutMode: String, Codable, Sendable {
+    case single, multi
+}
+
 nonisolated struct Library: Codable, Sendable {
     var texts: [SavedText] = []
     var profiles: [StyleProfile] = []
     /// nil selects the built-in default profile.
     var selectedProfileID: UUID?
     var currentTextID: UUID?
+    /// Optional so libraries saved before multi-widget styles still decode.
+    var layoutModeStored: LayoutMode?
+    var selectedMultiProfileID: UUID?
+
+    var layoutMode: LayoutMode {
+        get { layoutModeStored ?? .single }
+        set { layoutModeStored = newValue }
+    }
 
     var activeProfile: StyleProfile {
-        profiles.first { $0.id == selectedProfileID } ?? .builtInDefault
+        profiles.first { $0.id == selectedProfileID && $0.kind == .single } ?? .builtInDefault
+    }
+
+    /// An explicit choice wins; otherwise the first custom multi style, then the built-in one.
+    var activeMultiProfile: StyleProfile {
+        if selectedMultiProfileID == StyleProfile.builtInMultiID { return .builtInMultiDefault }
+        return profiles.first { $0.id == selectedMultiProfileID && $0.kind == .multi }
+            ?? profiles.first { $0.kind == .multi }
+            ?? .builtInMultiDefault
+    }
+
+    func activeProfile(for kind: StyleKind) -> StyleProfile {
+        kind == .multi ? activeMultiProfile : activeProfile
+    }
+
+    /// The style the app previews, following the chosen layout mode.
+    var displayProfile: StyleProfile { activeProfile(for: layoutMode == .multi ? .multi : .single) }
+
+    func profiles(of kind: StyleKind) -> [StyleProfile] {
+        profiles.filter { $0.kind == kind }
     }
 
     var currentText: SavedText? {

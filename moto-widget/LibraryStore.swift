@@ -36,14 +36,6 @@ final class LibraryStore {
         commit()
     }
 
-    func deleteProfiles(at offsets: IndexSet) {
-        library.profiles.remove(atOffsets: offsets)
-        if !library.profiles.contains(where: { $0.id == library.selectedProfileID }) {
-            library.selectedProfileID = nil
-        }
-        commit()
-    }
-
     func setCurrentText(_ id: UUID) {
         library.currentTextID = id
         commit()
@@ -65,12 +57,22 @@ final class LibraryStore {
     func deleteProfile(_ id: UUID) {
         library.profiles.removeAll { $0.id == id }
         if library.selectedProfileID == id { library.selectedProfileID = nil }
+        if library.selectedMultiProfileID == id { library.selectedMultiProfileID = nil }
         commit()
     }
 
-    /// Passing nil (or the built-in default's ID) selects the default profile.
-    func selectProfile(_ id: UUID?) {
-        library.selectedProfileID = id == StyleProfile.builtInDefaultID ? nil : id
+    func selectProfile(_ profile: StyleProfile) {
+        switch profile.kind {
+        case .single:
+            library.selectedProfileID = profile.id == StyleProfile.builtInDefaultID ? nil : profile.id
+        case .multi:
+            library.selectedMultiProfileID = profile.id
+        }
+        commit()
+    }
+
+    func setLayoutMode(_ mode: LayoutMode) {
+        library.layoutMode = mode
         commit()
     }
 

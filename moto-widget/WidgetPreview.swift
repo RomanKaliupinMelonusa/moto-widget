@@ -11,9 +11,11 @@ extension RGBAColor {
 struct WidgetPreview: View {
     enum Size: String, CaseIterable, Identifiable {
         case small = "Small", medium = "Medium", large = "Large"
-        case lockRectangular = "Lock", lockCircular = "Circle"
+        case lockRectangular = "Lock", lockCircular = "Circle", lockPair = "Pair"
 
         var id: String { rawValue }
+
+        static let singleStyleCases: [Size] = [.small, .medium, .large, .lockRectangular, .lockCircular]
 
         var dimensions: CGSize {
             switch self {
@@ -22,6 +24,7 @@ struct WidgetPreview: View {
             case .large: CGSize(width: 338, height: 354)
             case .lockRectangular: CGSize(width: 160, height: 72)
             case .lockCircular: CGSize(width: 76, height: 76)
+            case .lockPair: CGSize(width: 330, height: 72)
             }
         }
 
@@ -39,7 +42,9 @@ struct WidgetPreview: View {
     var size: Size = .small
 
     var body: some View {
-        if let slot = size.lockSlot {
+        if size == .lockPair {
+            pairBody
+        } else if let slot = size.lockSlot {
             StyledTextView(text: text, profile: profile, slot: slot)
                 .frame(width: size.dimensions.width, height: size.dimensions.height)
                 .background(.white.opacity(0.15))
@@ -52,6 +57,21 @@ struct WidgetPreview: View {
         } else {
             homeScreenBody
         }
+    }
+
+    private var pairBody: some View {
+        HStack(spacing: 10) {
+            ForEach(0..<MultiWidgetLayout.partCount, id: \.self) { part in
+                MultiPartText(text: text, profile: profile, part: part)
+                    .frame(width: 160, height: 72)
+                    .background(.white.opacity(0.15), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+            }
+        }
+        .padding(12)
+        .background(.black, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+        .environment(\.colorScheme, .dark)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Multi-widget Lock Screen preview: \(text)")
     }
 
     private var homeScreenBody: some View {

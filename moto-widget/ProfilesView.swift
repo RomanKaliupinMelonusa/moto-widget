@@ -4,38 +4,65 @@ struct ProfilesView: View {
     @Environment(LibraryStore.self) private var store
     @State private var path: [UUID] = []
 
+    private var kind: StyleKind { store.library.layoutMode == .multi ? .multi : .single }
+    private var builtIn: StyleProfile { kind == .multi ? .builtInMultiDefault : .builtInDefault }
+    private var custom: [StyleProfile] { store.library.profiles(of: kind) }
+
+    private var layoutBinding: Binding<LayoutMode> {
+        Binding(get: { store.library.layoutMode }, set: { store.setLayoutMode($0) })
+    }
+
     var body: some View {
         NavigationStack(path: $path) {
             List {
                 Section {
-                    row(for: .builtInDefault, isEditable: false)
-                    ForEach(store.library.profiles) { profile in
+                    Picker("Layout", selection: layoutBinding) {
+                        Text("One widget").tag(LayoutMode.single)
+                        Text("Multiple widgets").tag(LayoutMode.multi)
+                    }
+                    .pickerStyle(.segmented)
+                    .labelsHidden()
+                } footer: {
+                    Text(kind == .multi
+                        ? "One text is fitted across two Lock Screen widgets. Add Multi Widget: Left and Multi Widget: Right side by side."
+                        : "Each widget shows the text on its own.")
+                }
+
+                Section {
+                    row(for: builtIn, isEditable: false)
+                    ForEach(custom) { profile in
                         row(for: profile, isEditable: true)
                     }
-                    .onDelete { store.deleteProfiles(at: $0) }
+                    .onDelete { offsets in
+                        offsets.map { custom[$0].id }.forEach(store.deleteProfile)
+                    }
+                } header: {
+                    Text(kind == .multi ? "Multiple widget styles" : "Styles")
                 } footer: {
-                    Text("Only one style is used by widgets. When no custom style is selected, the default is used.")
+                    Text(kind == .multi
+                        ? "Multiple widgets use the checked style. With none checked, your first multiple widget style is used."
+                        : "Widgets use the checked style. With none checked, the default is used.")
                 }
             }
+            .animation(.default, value: kind)
             .navigationTitle("Styles")
             .navigationDestination(for: UUID.self) { id in
                 ProfileEditorHost(id: id)
             }
             .toolbar {
                 ToolbarItem(placement: .topBarLeading) {
-                    if !store.library.profiles.isEmpty { EditButton() }
+                    if !custom.isEmpty { EditButton() }
                 }
                 ToolbarItem(placement: .topBarTrailing) {
                     Menu("New Style", systemImage: "plus") {
                         Button("Blank Style", systemImage: "doc") {
-                            var profile = StyleProfile()
-                            profile.name = "Style \(store.library.profiles.count + 1)"
+                            let profile = blankProfile()
                             store.addProfile(profile)
                             path.append(profile.id)
                         }
                         Menu("From Existing Style", systemImage: "plus.square.on.square") {
-                            Button(StyleProfile.builtInDefault.name) { duplicate(.builtInDefault) }
-                            ForEach(store.library.profiles) { profile in
+                            Button(builtIn.name) { duplicate(builtIn) }
+                            ForEach(custom) { profile in
                                 Button(profile.name) { duplicate(profile) }
                             }
                         }
@@ -45,18 +72,26 @@ struct ProfilesView: View {
         }
     }
 
+    private func blankProfile() -> StyleProfile {
+        let number = custom.count + 1
+        if kind == .multi { return .newMulti(name: "Multi Style \(number)") }
+        var profile = StyleProfile()
+        profile.name = "Style \(number)"
+        return profile
+    }
+
     private func duplicate(_ profile: StyleProfile) {
         path.append(store.duplicateProfile(profile).id)
     }
 
     private func isSelected(_ profile: StyleProfile) -> Bool {
-        store.library.activeProfile.id == profile.id
+        store.library.activeProfile(for: profile.kind).id == profile.id
     }
 
     private func row(for profile: StyleProfile, isEditable: Bool) -> some View {
         HStack(spacing: 12) {
             Button {
-                store.selectProfile(profile.id)
+                store.selectProfile(profile)
             } label: {
                 HStack(spacing: 12) {
                     Image(systemName: isSelected(profile) ? "checkmark.circle.fill" : "circle")
@@ -100,6 +135,7 @@ struct ProfilesView: View {
 
     private func summary(of profile: StyleProfile) -> String {
         let font = profile.usesCustomFont && !profile.customFontFamily.isEmpty ? profile.customFontFamily : profile.design.label
-        return "\(font) · \(profile.weight.label) · \(Int(profile.fontSize)) pt"
+        let size = profile.kind == .multi ? "up to \(Int(profile.fontSize)) pt" : "\(Int(profile.fontSize)) pt"
+        return "\(font) · \(profile.weight.label) · \(size)"
     }
 }

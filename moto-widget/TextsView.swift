@@ -7,16 +7,23 @@ struct TextsView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("Widget preview") {
+                Section {
                     HStack {
                         Spacer()
                         WidgetPreview(
                             text: store.library.currentText?.content ?? "Add some text",
-                            profile: store.library.activeProfile
+                            profile: store.library.displayProfile,
+                            size: store.library.layoutMode == .multi ? .lockPair : .small
                         )
                         Spacer()
                     }
                     .listRowBackground(Color.clear)
+                } header: {
+                    Text("Widget preview")
+                } footer: {
+                    if store.library.layoutMode == .multi {
+                        Text("The text is split across the Multi Widget Left and Right widgets.")
+                    }
                 }
 
                 Section {

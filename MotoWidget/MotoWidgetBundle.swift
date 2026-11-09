@@ -5,6 +5,8 @@ import WidgetKit
 struct MotoWidgetBundle: WidgetBundle {
     var body: some Widget {
         MotoTextWidget()
+        MotoTextLeftWidget()
+        MotoTextRightWidget()
         NextTextControl()
     }
 }

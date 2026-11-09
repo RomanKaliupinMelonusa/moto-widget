@@ -7,15 +7,22 @@ struct StyledTextView: View {
     var slot: LockScreenSlot?
 
     var body: some View {
+        let isPart: Bool = if case .part = slot { true } else { false }
         let size = switch slot {
         case .rectangular: profile.lockRectangularSize
         case .circular: profile.lockCircularSize
+        case .part(let fontSize): fontSize
         case nil: profile.fontSize
         }
-        let minimumScale = slot == nil
-            ? (profile.autoShrink ? profile.minimumScale : 1)
-            : (profile.lockShrinks ? profile.lockMinimumScale : 1)
-        let lineLimit = slot == nil ? profile.lineLimit : profile.lockLineLimit
+        // Parts are sized by the splitter; the floor only guards against measurement error.
+        let minimumScale: Double = if isPart {
+            0.5
+        } else if slot == nil {
+            profile.autoShrink ? profile.minimumScale : 1
+        } else {
+            profile.lockShrinks ? profile.lockMinimumScale : 1
+        }
+        let lineLimit = isPart ? 0 : (slot == nil ? profile.lineLimit : profile.lockLineLimit)
         Text(profile.textCase.apply(to: text))
             .font(profile.font(size: size))
             .tracking(profile.tracking)
@@ -33,8 +40,8 @@ struct StyledTextView: View {
                 x: profile.shadowX,
                 y: profile.shadowY
             )
-            .rotationEffect(.degrees(profile.rotation))
-            .padding(profile.contentPadding)
+            .rotationEffect(.degrees(isPart ? 0 : profile.rotation))
+            .padding(isPart ? 0 : profile.contentPadding)
             .frame(
                 maxWidth: .infinity,
                 maxHeight: .infinity,

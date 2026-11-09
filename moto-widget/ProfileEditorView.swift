@@ -27,6 +27,8 @@ struct ProfileEditorView: View {
         _draft = State(initialValue: profile)
     }
 
+    private var isMulti: Bool { draft.kind == .multi }
+
     var body: some View {
         Form {
             Section("Name") {
@@ -37,15 +39,19 @@ struct ProfileEditorView: View {
             textSection
             layoutSection
             shadowSection
-            backgroundSection
-            lockScreenSection
 
-            Section {
-                Toggle("Tint text in accented mode", isOn: $draft.tintsInAccentedMode)
-            } header: {
-                Text("Widget")
-            } footer: {
-                Text("When the Home Screen uses tinted icons, text marked as accentable takes the tint color.")
+            // Hidden for multi styles: they would break how the parts line up, or Lock Screen ignores them.
+            if !isMulti {
+                backgroundSection
+                lockScreenSection
+
+                Section {
+                    Toggle("Tint text in accented mode", isOn: $draft.tintsInAccentedMode)
+                } header: {
+                    Text("Widget")
+                } footer: {
+                    Text("When the Home Screen uses tinted icons, text marked as accentable takes the tint color.")
+                }
             }
         }
         .safeAreaInset(edge: .top, spacing: 0) { previewBar }
@@ -58,16 +64,18 @@ struct ProfileEditorView: View {
 
     private var previewBar: some View {
         VStack(spacing: 8) {
-            Picker("Preview size", selection: $previewSize) {
-                ForEach(WidgetPreview.Size.allCases) { Text($0.rawValue).tag($0) }
+            if !isMulti {
+                Picker("Preview size", selection: $previewSize) {
+                    ForEach(WidgetPreview.Size.singleStyleCases) { Text($0.rawValue).tag($0) }
+                }
+                .pickerStyle(.segmented)
             }
-            .pickerStyle(.segmented)
 
             ScrollView(.vertical) {
                 WidgetPreview(
                     text: store.library.currentText?.content ?? "Sample text",
                     profile: draft,
-                    size: previewSize
+                    size: isMulti ? .lockPair : previewSize
                 )
                 .padding(.vertical, 4)
             }
@@ -83,7 +91,7 @@ struct ProfileEditorView: View {
     // MARK: Sections
 
     private var fontSection: some View {
-        Section("Font") {
+        Section {
             Toggle("Use installed font family", isOn: $draft.usesCustomFont)
             if draft.usesCustomFont {
                 NavigationLink {
@@ -98,8 +106,14 @@ struct ProfileEditorView: View {
                 Toggle("Monospaced digits", isOn: $draft.usesMonospacedDigits)
             }
             OptionPicker("Weight", selection: $draft.weight)
-            SliderRow("Size", value: $draft.fontSize, range: 8...240, step: 1, unit: "pt")
+            SliderRow(isMulti ? "Largest size" : "Size", value: $draft.fontSize, range: 8...240, step: 1, unit: "pt")
             Toggle("Italic", isOn: $draft.isItalic)
+        } header: {
+            Text("Font")
+        } footer: {
+            if isMulti {
+                Text("The text is split between the widgets and sized to fill them. This is the largest size it will use.")
+            }
         }
     }
 
@@ -110,12 +124,14 @@ struct ProfileEditorView: View {
             Toggle("Strikethrough", isOn: $draft.strikethrough)
             SliderRow("Letter spacing", value: $draft.tracking, range: -5...20, step: 0.5, unit: "pt")
             SliderRow("Line spacing", value: $draft.lineSpacing, range: -10...50, step: 1, unit: "pt")
-            Stepper(value: $draft.lineLimit, in: 0...20) {
-                LabeledContent("Line limit", value: draft.lineLimit == 0 ? "Unlimited" : "\(draft.lineLimit)")
+            Stepper(value: $draft.lineLimit, in: 0...(isMulti ? 4 : 20)) {
+                LabeledContent(isMulti ? "Lines per widget" : "Line limit", value: draft.lineLimit == 0 ? "Automatic" : "\(draft.lineLimit)")
             }
-            Toggle("Shrink to fit", isOn: $draft.autoShrink)
-            if draft.autoShrink {
-                SliderRow("Minimum scale", value: $draft.minimumScale, range: 0.1...1, step: 0.05, unit: "×")
+            if !isMulti {
+                Toggle("Shrink to fit", isOn: $draft.autoShrink)
+                if draft.autoShrink {
+                    SliderRow("Minimum scale", value: $draft.minimumScale, range: 0.1...1, step: 0.05, unit: "×")
+                }
             }
             FillEditor(title: "Color", fill: $draft.textFill, automaticLabel: "Automatic (primary)")
             SliderRow("Opacity", value: $draft.textOpacity, range: 0...1, step: 0.05, unit: "")
@@ -126,8 +142,10 @@ struct ProfileEditorView: View {
         Section("Layout") {
             OptionPicker("Horizontal alignment", selection: $draft.horizontalAlignment, style: .segmented)
             OptionPicker("Vertical alignment", selection: $draft.verticalAlignment, style: .segmented)
-            SliderRow("Extra padding", value: $draft.contentPadding, range: 0...48, step: 1, unit: "pt")
-            SliderRow("Rotation", value: $draft.rotation, range: -180...180, step: 1, unit: "°")
+            if !isMulti {
+                SliderRow("Extra padding", value: $draft.contentPadding, range: 0...48, step: 1, unit: "pt")
+                SliderRow("Rotation", value: $draft.rotation, range: -180...180, step: 1, unit: "°")
+            }
         }
     }
 
@@ -160,7 +178,7 @@ struct ProfileEditorView: View {
         } header: {
             Text("Lock Screen")
         } footer: {
-            Text("Used by the Lock Screen widgets. Other style settings, such as font and color, still apply.")
+            Text("Used by the Lock Screen widgets when a single widget shows the text.")
         }
     }
 

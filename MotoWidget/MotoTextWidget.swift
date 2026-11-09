@@ -8,6 +8,8 @@ struct TextEntry: TimelineEntry {
     let profile: StyleProfile
     /// True when tapping the widget should switch to the next saved text.
     let canAdvance: Bool
+    /// Index of this widget within a multi-widget set; nil for a standalone widget.
+    var part: Int?
 }
 
 struct TextProvider: AppIntentTimelineProvider {
@@ -31,6 +33,34 @@ struct TextProvider: AppIntentTimelineProvider {
             text: library.text(pinnedID: pinnedID)?.content,
             profile: library.activeProfile,
             canAdvance: pinnedID == nil && library.texts.count > 1
+        )
+    }
+}
+
+/// Shows the current text, using the multi-widget style, for one widget of a set.
+struct PartProvider: TimelineProvider {
+    let part: Int
+
+    func placeholder(in context: Context) -> TextEntry {
+        TextEntry(date: .now, text: "Your text", profile: .builtInMultiDefault, canAdvance: false, part: part)
+    }
+
+    func getSnapshot(in context: Context, completion: @escaping (TextEntry) -> Void) {
+        completion(entry())
+    }
+
+    func getTimeline(in context: Context, completion: @escaping (Timeline<TextEntry>) -> Void) {
+        completion(Timeline(entries: [entry()], policy: .never))
+    }
+
+    private func entry() -> TextEntry {
+        let library = LibraryStorage.load()
+        return TextEntry(
+            date: .now,
+            text: library.currentText?.content,
+            profile: library.activeMultiProfile,
+            canAdvance: library.texts.count > 1,
+            part: part
         )
     }
 }
@@ -69,7 +99,7 @@ struct TextWidgetView: View {
                     styled(text, slot: .circular)
                 }
             case .accessoryRectangular:
-                tappable { styled(text, slot: .rectangular) }
+                tappable { rectangular(text) }
             default:
                 tappable { styled(text, slot: nil) }
             }
@@ -78,6 +108,16 @@ struct TextWidgetView: View {
                 .font(.footnote)
                 .multilineTextAlignment(.center)
                 .foregroundStyle(.secondary)
+        }
+    }
+
+    @ViewBuilder
+    private func rectangular(_ text: String) -> some View {
+        if let part = entry.part {
+            MultiPartText(text: text, profile: entry.profile, part: part)
+                .widgetAccentable(entry.profile.tintsInAccentedMode)
+        } else {
+            styled(text, slot: .rectangular)
         }
     }
 
@@ -94,6 +134,28 @@ struct TextWidgetView: View {
         } else {
             content()
         }
+    }
+}
+
+struct MotoTextLeftWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "MotoTextLeftWidget", provider: PartProvider(part: 0)) { entry in
+            TextWidgetView(entry: entry)
+        }
+        .configurationDisplayName("Multi Widget: Left")
+        .description("Place next to Multi Widget: Right to show one text across both. Style it in the Styles tab.")
+        .supportedFamilies([.accessoryRectangular])
+    }
+}
+
+struct MotoTextRightWidget: Widget {
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: "MotoTextRightWidget", provider: PartProvider(part: 1)) { entry in
+            TextWidgetView(entry: entry)
+        }
+        .configurationDisplayName("Multi Widget: Right")
+        .description("Place next to Multi Widget: Left to show one text across both. Style it in the Styles tab.")
+        .supportedFamilies([.accessoryRectangular])
     }
 }
 
